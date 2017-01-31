@@ -81,9 +81,12 @@ class hashTagClassification(EmotionPlugin):
               
         tmp = []
         for token in text.split():
-            if(self.uniqueTokens[token] >= self.WORD_FREQUENCY_TRESHOLD):
-                if(not token in self.stop_words):
-                    tmp.append(token)
+            try:
+                if(self.uniqueTokens[token] >= self.WORD_FREQUENCY_TRESHOLD):
+                    if(not token in self.stop_words):
+                        tmp.append(token)
+            except IndexError:
+                pass
         text = ' '.join(tmp)
              
         X = []
