@@ -61,8 +61,10 @@ class hashTagClassification(EmotionPlugin):
         logger.info("EmoText plugin is ready to go!")
 
     def deactivate(self, *args, **kwargs):
-
-        logger.info("EmoText plugin is being deactivated...")
+        try:
+            logger.info("EmoText plugin is being deactivated...")
+        except Exception:
+            print("Exception in logger while reporting deactivation of hashTagClassification")
 
     #MY FUNCTIONS
     
@@ -125,7 +127,7 @@ class hashTagClassification(EmotionPlugin):
         ngramizers = []
                               
         for n_grams in [2,3]:
-            filename = '/home/vlaand/IpythonNotebooks/senpy/senpy/plugins/hashTagClassification/LinearSVC/'+SEP+ 'ngramizer'+str(n_grams)+ self.EXTENSION
+            filename = os.path.join(os.path.dirname(__file__), 'LinearSVC/', 'ngramizer' + str(n_grams) + self.EXTENSION)
             #filename = 'LinearSVR' +SEP+ 'ngramizer'+str(n_grams) + self.EXTENSION
             #filename = os.path.join(os.path.dirname(__file__),filename)
             ngramizers.append( joblib.load(filename) )
