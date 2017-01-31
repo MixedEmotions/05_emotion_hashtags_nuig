@@ -1,0 +1,3 @@
+[submodule "hashTagClassification/drevicko"]
+	path = hashTagClassification/drevicko
+	url = git@gitlab.insight-centre.org:ianwoo/drevicko.git
