@@ -32,7 +32,6 @@ class hashTagClassification(EmotionPlugin):
         super(hashTagClassification, self).__init__(info, *args, **kwargs)
         self.id = info['module']
         self.info = info
-        self.stop_words = get_stop_words('en')
         local_path=os.path.dirname(os.path.abspath(__file__))
         self._categories = {'sadness':[],
                             'disgust':[],
@@ -54,10 +53,14 @@ class hashTagClassification(EmotionPlugin):
         self.EMBEDDING_DIM = 100  
         self.WORD_FREQUENCY_TRESHOLD = 10
         
-        self.uniqueTokens = {}
+        self._uniqueTokens = {}
 
 
     def activate(self, *args, **kwargs):
+        print("about to load dictionary")
+        self._uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
+        self._Dictionary = self._load_word_vectors()
+        self._stop_words = get_stop_words('en')
         logger.info("EmoText plugin is ready to go!")
 
     def deactivate(self, *args, **kwargs):
@@ -82,8 +85,8 @@ class hashTagClassification(EmotionPlugin):
         tmp = []
         for token in text.split():
             try:
-                if(self.uniqueTokens[token] >= self.WORD_FREQUENCY_TRESHOLD):
-                    if(not token in self.stop_words):
+                if(self._uniqueTokens[token] >= self.WORD_FREQUENCY_TRESHOLD):
+                    if(not token in self._stop_words):
                         tmp.append(token)
             except IndexError:
                 pass
@@ -227,12 +230,9 @@ class hashTagClassification(EmotionPlugin):
         print("about to preprocess '%s'"%text_input)
         text = self._text_preprocessor(text_input)
         
-        self.uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
         
-        print("about to load dictionary")
-        Dictionary = self._load_word_vectors()
         print("about to convert to vector")
-        X = self._convert_text_to_vector(text, Dictionary, DATA_FORMAT)
+        X = self._convert_text_to_vector(text, self._Dictionary, DATA_FORMAT)
         
         # load classifiers     
         print("about to load classifiers")
