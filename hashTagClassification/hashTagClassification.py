@@ -61,11 +61,11 @@ class hashTagClassification(EmotionPlugin):
         self._uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
         self._Dictionary = self._load_word_vectors()
         self._stop_words = get_stop_words('en')
-        logger.info("EmoText plugin is ready to go!")
+        logger.info("hashTagClassification plugin is ready to go!")
 
     def deactivate(self, *args, **kwargs):
         try:
-            logger.info("EmoText plugin is being deactivated...")
+            logger.info("hashTagClassification plugin is being deactivated...")
         except Exception:
             print("Exception in logger while reporting deactivation of hashTagClassification")
 
@@ -255,4 +255,5 @@ class hashTagClassification(EmotionPlugin):
         entry.emotions = [emotionSet]
         response.entries.append(entry)
         
+        print("about to return from analyse()")
         return response
