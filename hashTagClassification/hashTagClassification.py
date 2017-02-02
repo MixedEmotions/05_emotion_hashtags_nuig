@@ -31,7 +31,8 @@ class hashTagClassification(EmotionPlugin):
     def __init__(self, info, *args, **kwargs):
         super(hashTagClassification, self).__init__(info, *args, **kwargs)
         self.id = info['module']
-        self.info = info
+        self._info = info
+        hashTagClassification._stop_words = get_stop_words('en')
         local_path=os.path.dirname(os.path.abspath(__file__))
         self._categories = {'sadness':[],
                             'disgust':[],
@@ -49,20 +50,35 @@ class hashTagClassification(EmotionPlugin):
                                     'joy':'joy'}
 
         self.EXTENSION = '.dump'
-        self.emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy']  
+        self._emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy']  
         self.EMBEDDING_DIM = 100  
         self.WORD_FREQUENCY_TRESHOLD = 10
         
         self._uniqueTokens = {}
 
+        self._classifiers = []
+        self._DATA_FORMAT = 'weng'
+        self._ESTIMATOR = 'LinearSVC' 
+        self._Dictionary = {}
+
 
     def activate(self, *args, **kwargs):
-        print("about to load dictionary")
-        self._uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
+        
         self._Dictionary = self._load_word_vectors()
+        self._uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
+        self._classifiers = self._load_classifiers(DATA_FORMAT=self._DATA_FORMAT, ESTIMATOR=self._ESTIMATOR, emoNames=self._emoNames)
         self._stop_words = get_stop_words('en')
-        logger.info("hashTagClassification plugin is ready to go!")
 
+        # SEP = '/'
+        self._ngramizers = []                              
+        for n_grams in [2,3]:
+            filename = os.path.join(os.path.dirname(__file__), 'LinearSVC/', 'ngramizer' + str(n_grams) + self.EXTENSION)
+            #filename = 'LinearSVR' +SEP+ 'ngramizer'+str(n_grams) + self.EXTENSION
+            #filename = os.path.join(os.path.dirname(__file__),filename)
+            self._ngramizers.append( joblib.load(filename) )
+
+        logger.info("EmoText plugin is ready to go!")
+        
     def deactivate(self, *args, **kwargs):
         try:
             logger.info("hashTagClassification plugin is being deactivated...")
@@ -95,25 +111,25 @@ class hashTagClassification(EmotionPlugin):
         X = []
         
         if(DATA_FORMAT == 'we'):
-            embeddingsVector = self.ModWordVectors(self.tweetToWordVectors(Dictionary,text))
+            embeddingsVector = self.ModWordVectors(self._tweetToWordVectors(Dictionary,text))
             additionalVector = self.capitalRatio(text)
-            Xa = self.bindTwoVectors(additionalVector, embeddingsVector)  
+            Xa = self._bindTwoVectors(additionalVector, embeddingsVector)  
             X = {'sadness':Xa,'disgust':Xa,'surprise':Xa,'anger':Xa,'fear':Xa,'joy':Xa}
                 
         elif(DATA_FORMAT == 'ng'):            
             bigramVector,trigramVector = self.tweetToNgramVector(text)
             additionalVector = self.capitalRatio(text)
-            Xa = self.bindTwoVectors(bigramVector,additionalVector) 
+            Xa = self._bindTwoVectors(bigramVector,additionalVector) 
             X = {'sadness':Xa,'disgust':Xa,'surprise':Xa,'anger':Xa,'fear':Xa,'joy':Xa}
                 
         elif(DATA_FORMAT == 'weng'):
-            bigramVector,trigramVector = self.tweetToNgramVector(text)
-            embeddingsVector = self.ModWordVectors(self.tweetToWordVectors(Dictionary,text))
-            additionalVector = self.capitalRatio(text)
-            Xa = np.asarray(self.bindTwoVectors(bigramVector,self.bindTwoVectors(additionalVector, embeddingsVector)) ) 
-            Xb = np.asarray(self.bindTwoVectors(trigramVector,self.bindTwoVectors(additionalVector, embeddingsVector)) ) 
+            bigramVector,trigramVector = self._tweetToNgramVector(text)
+            embeddingsVector = self._ModWordVectors(self._tweetToWordVectors(Dictionary,text))
+            additionalVector = self._capitalRatio(text)
+            Xa = np.asarray(self._bindTwoVectors(bigramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1) 
+            Xb = np.asarray(self._bindTwoVectors(trigramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1) 
             
-            X = {'sadness':Xa,'disgust':Xa,'surprise':Xb,'anger':Xa,'fear':Xb,'joy':Xa}
+            X = {'sadness':Xa,'disgust':Xa,'surprise':Xb, 'anger':Xa, 'fear':Xb,'joy':Xa}
 
         return(X)
 
@@ -128,19 +144,10 @@ class hashTagClassification(EmotionPlugin):
 
         return(Dictionary)
     
-    def tweetToNgramVector(self, text):
-        SEP = '/'
-        ngramizers = []
-                              
-        for n_grams in [2,3]:
-            filename = os.path.join(os.path.dirname(__file__), 'LinearSVC/', 'ngramizer' + str(n_grams) + self.EXTENSION)
-            #filename = 'LinearSVR' +SEP+ 'ngramizer'+str(n_grams) + self.EXTENSION
-            #filename = os.path.join(os.path.dirname(__file__),filename)
-            ngramizers.append( joblib.load(filename) )
-        
-        return(ngramizers[0].transform([text,text]).toarray()[0] , ngramizers[1].transform([text,text]).toarray()[0])        
+    def _tweetToNgramVector(self, text):
+        return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0])        
 
-    def tweetToWordVectors(self, Dictionary, tweet, fixedLength=False):
+    def _tweetToWordVectors(self, Dictionary, tweet, fixedLength=False):
         output = []    
         if(fixedLength):
             for i in range(100):
@@ -153,7 +160,7 @@ class hashTagClassification(EmotionPlugin):
                 if token in Dictionary:
                     output.append(Dictionary[token])            
         return(output)
-    def ModWordVectors(self, x, mod=True):
+    def _ModWordVectors(self, x, mod=True):
         if(len(x) == 0):       
             if(mod):
                 return(np.zeros(self.EMBEDDING_DIM*3, dtype='float32'))
@@ -168,11 +175,11 @@ class hashTagClassification(EmotionPlugin):
             return(xX)
         else:
             return(np.array(m.mean(0))[0])
-    def bindTwoVectors(self, x0,x1):
+    def _bindTwoVectors(self, x0,x1):
         xX = np.array(list(itertools.chain(x0,x1)),dtype='float32')
         return(xX) 
     
-    def capitalRatio(self, tweet):
+    def _capitalRatio(self, tweet):
     
         firstCap, allCap = 0, 0
         length = len(tweet)
@@ -194,7 +201,7 @@ class hashTagClassification(EmotionPlugin):
             filename = ESTIMATOR +SEP+ DATA_FORMAT +SEP+ str(emoNames[EMOTION]) + self.EXTENSION
             filename = os.path.join(os.path.dirname(__file__),filename)
             m = joblib.load(filename)
-            print(m)
+            # print(m)
             models.append( m )
             
             #print(filename + ' loaded')
@@ -210,37 +217,18 @@ class hashTagClassification(EmotionPlugin):
     def _compare_tweets(self, X, classifiers):
         
         #feature_set = {emo: int(clf.predict(X)) for emo,clf in zipself._(self.emoNames, classifiers)} 
-        feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self.emoNames, classifiers)} 
+        feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self._emoNames, classifiers)} 
 
         return feature_set        
     
     
     def analyse(self, **params):
-        print("entering analyse")
-        print(os.getcwd())
-        print(os.path.dirname(__file__))
-        print(__file__)
-        logger.debug("Analysing with params {}".format(params))
+        logger.debug("Hashtag SVM Analysing with params {}".format(params))
         
-        text_input = params.get("input", None)        
-        DATA_FORMAT = 'weng'
-        ESTIMATOR = 'LinearSVC'
-        #LANG = params.get("language", None)         
-        
-        print("about to preprocess '%s'"%text_input)
-        text = self._text_preprocessor(text_input)
-        
-        
-        print("about to convert to vector")
-        X = self._convert_text_to_vector(text, self._Dictionary, DATA_FORMAT)
-        
-        # load classifiers     
-        print("about to load classifiers")
-        classifiers = self._load_classifiers(DATA_FORMAT=DATA_FORMAT, ESTIMATOR=ESTIMATOR, emoNames=self.emoNames)
-        
-        feature_text = self._compare_tweets(X=X, classifiers=classifiers)
-        
-        print("classification done, about to build results object")
+        text_input = params.get("input", None) 
+        text = self._text_preprocessor(text_input)        
+        X = self._convert_text_to_vector(text, self._Dictionary, self._DATA_FORMAT) 
+        feature_text = self._compare_tweets(X=X, classifiers=self._classifiers)
         response = Results()
 
         entry = Entry(id="Entry",
@@ -254,6 +242,4 @@ class hashTagClassification(EmotionPlugin):
 
         entry.emotions = [emotionSet]
         response.entries.append(entry)
-        
-        print("about to return from analyse()")
         return response
