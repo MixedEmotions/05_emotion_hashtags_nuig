@@ -77,7 +77,7 @@ class hashTagClassification(EmotionPlugin):
             #filename = os.path.join(os.path.dirname(__file__),filename)
             self._ngramizers.append( joblib.load(filename) )
 
-        logger.info("EmoText plugin is ready to go!")
+        logger.info("hashTagClassification plugin is ready to go!")
         
     def deactivate(self, *args, **kwargs):
         try:
