@@ -30,6 +30,7 @@ class hashTagClassification(EmotionPlugin):
     
     def __init__(self, info, *args, **kwargs):
         super(hashTagClassification, self).__init__(info, *args, **kwargs)
+        self.name = info['name']
         self.id = info['module']
         self._info = info
         hashTagClassification._stop_words = get_stop_words('en')
@@ -183,6 +184,8 @@ class hashTagClassification(EmotionPlugin):
     
         firstCap, allCap = 0, 0
         length = len(tweet)
+        if length==0:
+            return np.array([0,0])
 
         for i,token in enumerate(tweet.split()):
             if( token.istitle() ):
