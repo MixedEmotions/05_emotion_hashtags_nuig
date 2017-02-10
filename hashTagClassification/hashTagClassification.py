@@ -72,8 +72,8 @@ class hashTagClassification(EmotionPlugin):
 
         # SEP = '/'
         self._ngramizers = []                              
-        for n_grams in [2,3]:
-            filename = os.path.join(os.path.dirname(__file__), 'LinearSVC/', 'ngramizer' + str(n_grams) + self.EXTENSION)
+        for n_grams in [2,3,4]:
+            filename = os.path.join(os.path.dirname(__file__), 'LinearSVC/', str(n_grams) + 'gramizer' + self.EXTENSION)
             #filename = 'LinearSVR' +SEP+ 'ngramizer'+str(n_grams) + self.EXTENSION
             #filename = os.path.join(os.path.dirname(__file__),filename)
             self._ngramizers.append( joblib.load(filename) )
@@ -109,28 +109,17 @@ class hashTagClassification(EmotionPlugin):
                 pass
         text = ' '.join(tmp)
              
-        X = []
+        X = []        
         
-        if(DATA_FORMAT == 'we'):
-            embeddingsVector = self.ModWordVectors(self._tweetToWordVectors(Dictionary,text))
-            additionalVector = self.capitalRatio(text)
-            Xa = self._bindTwoVectors(additionalVector, embeddingsVector)  
-            X = {'sadness':Xa,'disgust':Xa,'surprise':Xa,'anger':Xa,'fear':Xa,'joy':Xa}
-                
-        elif(DATA_FORMAT == 'ng'):            
-            bigramVector,trigramVector = self.tweetToNgramVector(text)
-            additionalVector = self.capitalRatio(text)
-            Xa = self._bindTwoVectors(bigramVector,additionalVector) 
-            X = {'sadness':Xa,'disgust':Xa,'surprise':Xa,'anger':Xa,'fear':Xa,'joy':Xa}
-                
-        elif(DATA_FORMAT == 'weng'):
-            bigramVector,trigramVector = self._tweetToNgramVector(text)
-            embeddingsVector = self._ModWordVectors(self._tweetToWordVectors(Dictionary,text))
-            additionalVector = self._capitalRatio(text)
-            Xa = np.asarray(self._bindTwoVectors(bigramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1) 
-            Xb = np.asarray(self._bindTwoVectors(trigramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1) 
-            
-            X = {'sadness':Xa,'disgust':Xa,'surprise':Xb, 'anger':Xa, 'fear':Xb,'joy':Xa}
+        n2gramVector,n3gramVector,n4gramVector = self._tweetToNgramVector(text)
+        embeddingsVector = self._ModWordVectors(self._tweetToWordVectors(Dictionary,text))
+        additionalVector = self._capitalRatio(text)
+        
+        X4 = np.asarray(self._bindTwoVectors(n4gramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1) 
+        X3 = np.asarray(self._bindTwoVectors(n3gramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1)
+        X2 = np.asarray(self._bindTwoVectors(n2gramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1)
+
+        X = {'sadness':X4,'disgust':X4,'surprise':X4, 'anger':X2, 'fear':X4,'joy':X3}
 
         return(X)
 
@@ -146,7 +135,7 @@ class hashTagClassification(EmotionPlugin):
         return(Dictionary)
     
     def _tweetToNgramVector(self, text):
-        return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0])        
+        return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0], self._ngramizers[2].transform([text,text]).toarray()[0])        
 
     def _tweetToWordVectors(self, Dictionary, tweet, fixedLength=False):
         output = []    
@@ -221,7 +210,6 @@ class hashTagClassification(EmotionPlugin):
         
         #feature_set = {emo: int(clf.predict(X)) for emo,clf in zipself._(self.emoNames, classifiers)} 
         feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self._emoNames, classifiers)} 
-
         return feature_set        
     
     
