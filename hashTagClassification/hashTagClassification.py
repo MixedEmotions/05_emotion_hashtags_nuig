@@ -89,6 +89,8 @@ class hashTagClassification(EmotionPlugin):
     #MY FUNCTIONS
     
     def _text_preprocessor(self, text):
+        
+        text = text.replace("'","") # this is for contractions eg: "don't --> dont" instead of "don't --> don 't"
         text = casual._replace_html_entities(text) 
         text = casual.remove_handles(text)
         text = casual.reduce_lengthening(text)
