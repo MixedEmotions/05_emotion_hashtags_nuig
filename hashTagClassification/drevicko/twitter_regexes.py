@@ -43,9 +43,72 @@ from operator import itemgetter
 
 punctuationRe = r""" (['`\[\](){}⟨⟩:,\-‒–—―!.?‘’“”"•;…/\|=+_~@#^&*<>]) """
 
-regexStyles = ["twitterProAna","wordsAndPunct","walworth"]
+regexStyles = ["twitterProAna","wordsAndPunct","walworth","twitterRuby"]
 def setupRegexes(style="twitterProAna"):
   if style == regexStyles[0]: # twitterProAna or twitterEmoji
+    def separateNumbers(m):
+        if separateNumbers.string != m.string:
+            separateNumbers.string = m.string
+            separateNumbers.notParsing = False
+        s=m.group()
+        if s in set(('http','@','#')):
+            separateNumbers.notParsing = True
+            return s
+        if s == ' ':
+            separateNumbers.notParsing = False
+            return s
+        if separateNumbers.notParsing:
+            return s
+        return ' '+s+' '
+    separateNumbers.string = None
+    separateNumbers.searchString = r"http|@|#|\d+|\s"
+    
+    def skipEntities(m):
+        
+        return ' '+s+' '
+    LIWC_punct = r"""'`\[\](){}⟨⟩:,\-‒–—―!.?‘’“”"•;…/\|=+_~@#^&*<>"""
+    cleaningReList = [                       # surround punctuation with spaces (needs regex module, re module doesn't work!)
+    (r"(?V1)(["+LIWC_punct+"||[^\p{Letter}\p{Separator}\p{Number}]])",r" \1 "),
+                      # standardise quote characters
+    (u"['`‘’“”\"]","'"),
+                      # standardise smileys
+    (r" [:=;] ( [\-Do'`‘’xPpLCc"'"'r"/,~] )?( [(\[{] )+"," ): "),
+    (r" [:=] ( [\-Do'`‘’xPpLCc"'"'r"/,~] )?( [)\]}] )+"," (: "),
+    (r" ; ( [\-Do'`‘’xPpLCc"'"'r"/~] )?( [)\]}] )+|( [(\[{] )+( [\-Do'`‘’xPpLCc"'"'r"/~] )? ; "," (; "),
+    (r"(?<!http)(?<!https) [:=] ( [\-Do'`‘’xPpLCc"'"'r"/,~] )? / ( / )*"," :/ "),
+    (r" - ( [._] )+ - "," ): "),
+    (r"( [(\[{] )+( [\-Do'`‘’xPpLCc"'"'r"/,~] )? [:=;] "," (: "),
+    (r"( [)\]}] )+( [\-Do'`‘’xPpLCc"'"'r"/,~] )? [:=] "," ): "),
+                      # reform heart emoticons
+    (r"< 3","<3"),
+    #(r"http :  /  / (\S*)",r"http://\1"),
+                      # reform url's (ie: remove inserted spaces)
+    (r"http(s)? :  /  / ((\S*) (\.) |(\S*) (/) )(\S*)",r"http\1://\3\4\5\6\7"),
+    (r"http(s)?://(\S*)( (\.) (\S*)| (/) (\S*))",r"http\1://\2\4\5\6\7"),
+    (r"http(s)?://(\S*)( (\.) (\S*)| (/) (\S*))",r"http\1://\2\4\5\6\7"),
+    #(r"(?<=[_\W0-9])['`‘’]|['`‘’](?=[_\W0-9])"," ' "),
+    #(r"(?<=[a-zA-Z])(?=\d)|(?<=\d)(?=[a-zA-Z])",r" "),
+                      # keep "can't" etc as two tokens "can" and "'t"
+                      # TODO: !! don't should become 'do' and 't
+    (r"(\w) ' (\w)",r"\1 '\2"),
+                      # keep 
+                      # separate words and numbers (when not in a url)
+    (r"([#@]) (\w+)",r"\1\2"),
+    (r"([#@]\w+) _ (\w+)",r"\1_\2"), # up to 5 underscores in a name or tag - I guess others are rare!
+    (r"([#@]\w+) _ (\w+)",r"\1_\2"),
+    (r"([#@]\w+) _ (\w+)",r"\1_\2"),
+    (r"([#@]\w+) _ (\w+)",r"\1_\2"),
+    (r"([#@]\w+) _ (\w+)",r"\1_\2"),
+    (separateNumbers.searchString,separateNumbers),
+                      # reform "<3" (heart symbol in text)
+    (r" < *3 "," <3 "),
+#     (r"(\S*)((?<=[a-zA-Z])(?=\d)|(?<=\d)(?=[a-zA-Z]))",lambda x:x.group()+('' if re.findall('http',x.group()) else ' ')),
+                      # munge word case (ie. convert to lower case if not all caps) except if a url
+    (r"\S*([a-z]'?[A-Z]|[A-Z]'?[a-z])\w*",lambda x:x.group() if re.findall('http',x.group()) else x.group().lower())
+#     (r"([^\p{Letter}\p{Separator}"+LIWC_punct+"])",r" \1 ")\
+#     (r"([^\w\s"+LIWC_punct+"])",r" \1 ")\
+    ]
+  elif style == regexStyles[3]:
     def separateNumbers(m):
         if separateNumbers.string != m.string:
             separateNumbers.string = m.string

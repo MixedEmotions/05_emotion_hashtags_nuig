@@ -4,6 +4,14 @@
     "description": "Emotion classifier using SVM",
     "author": "@vlaand",
     "version": "0.1",
+    "extra_params": {
+        "estimator": {
+            "@id": "estimator_hashTagClassification",
+            "aliases": ["estimator", "e"],
+            "required": true,
+            "options": ["SVC", "LinearSVC"]
+        }
+     },
     "synsets_path": "/a-synsets.xml",
     "hierarchy_path": "/a-hierarchy.xml",
     "wn16_path": "/wordnet1.6/dict",

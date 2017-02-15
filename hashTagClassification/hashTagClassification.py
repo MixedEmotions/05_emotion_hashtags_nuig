@@ -53,13 +53,13 @@ class hashTagClassification(EmotionPlugin):
         self.EXTENSION = '.dump'
         self._emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy']  
         self.EMBEDDING_DIM = 100  
-        self.WORD_FREQUENCY_TRESHOLD = 10
+        self.WORD_FREQUENCY_TRESHOLD = 3
         
         self._uniqueTokens = {}
 
         self._classifiers = []
         self._DATA_FORMAT = 'weng'
-        self._ESTIMATOR = 'LinearSVC' 
+        self._ESTIMATOR = 'LinearSVC'
         self._Dictionary = {}
 
 
@@ -70,12 +70,9 @@ class hashTagClassification(EmotionPlugin):
         self._classifiers = self._load_classifiers(DATA_FORMAT=self._DATA_FORMAT, ESTIMATOR=self._ESTIMATOR, emoNames=self._emoNames)
         self._stop_words = get_stop_words('en')
 
-        # SEP = '/'
         self._ngramizers = []                              
         for n_grams in [2,3,4]:
-            filename = os.path.join(os.path.dirname(__file__), 'LinearSVC/', str(n_grams) + 'gramizer' + self.EXTENSION)
-            #filename = 'LinearSVR' +SEP+ 'ngramizer'+str(n_grams) + self.EXTENSION
-            #filename = os.path.join(os.path.dirname(__file__),filename)
+            filename = os.path.join(os.path.dirname(__file__), 'ngramizers/', str(n_grams) + 'gramizer' + self.EXTENSION)
             self._ngramizers.append( joblib.load(filename) )
 
         logger.info("hashTagClassification plugin is ready to go!")
@@ -133,7 +130,8 @@ class hashTagClassification(EmotionPlugin):
             line_d = line.decode('utf-8').split(', ')
             token, token_id = line_d[0], line_d[1]
             token_vector = np.array(line_d[2:], dtype = 'float32')    
-            Dictionary[token] = token_vector
+            if(np.std(token_vector) != 0.0):
+                Dictionary[token] = token_vector
 
         return(Dictionary)
     
@@ -210,14 +208,15 @@ class hashTagClassification(EmotionPlugin):
         
 
     def _compare_tweets(self, X, classifiers):
-        
-        #feature_set = {emo: int(clf.predict(X)) for emo,clf in zipself._(self.emoNames, classifiers)} 
+                
         feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self._emoNames, classifiers)} 
         return feature_set        
     
     
     def analyse(self, **params):
         logger.debug("Hashtag SVM Analysing with params {}".format(params))
+        
+        # self._ESTIMATOR = params.get("estimator", None)
         
         text_input = params.get("input", None) 
         text = self._text_preprocessor(text_input)        
