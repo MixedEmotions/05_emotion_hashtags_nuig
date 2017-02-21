@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 import math, itertools
 from drevicko.twitter_regexes import cleanString, setupRegexes, tweetPreprocessor
+import preprocess_twitter
 from collections import defaultdict
 from stop_words import get_stop_words
 from sklearn.feature_extraction.text import CountVectorizer
@@ -22,6 +23,8 @@ from sklearn.svm import SVC, SVR
 
 from nltk.tokenize import TweetTokenizer
 import nltk.tokenize.casual as casual
+
+import gzip
 
 
 
@@ -52,7 +55,7 @@ class hashTagClassification(EmotionPlugin):
 
         self.EXTENSION = '.dump'
         self._emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy']  
-        self.EMBEDDING_DIM = 100  
+        self.EMBEDDINGS_DIM = 200  
         self.WORD_FREQUENCY_TRESHOLD = 3
         
         self._uniqueTokens = {}
@@ -65,7 +68,7 @@ class hashTagClassification(EmotionPlugin):
 
     def activate(self, *args, **kwargs):
         
-        self._Dictionary = self._load_word_vectors()
+        self._Dictionary = self._load_word_vectors(filename= os.path.join(os.path.dirname(__file__),"glove.twitter.27B.200d.txt.gz"))
         self._uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
         self._classifiers = self._load_classifiers(DATA_FORMAT=self._DATA_FORMAT, ESTIMATOR=self._ESTIMATOR, emoNames=self._emoNames)
         self._stop_words = get_stop_words('en')
@@ -87,17 +90,24 @@ class hashTagClassification(EmotionPlugin):
     
     def _text_preprocessor(self, text):
         
-        text = text.replace("'","") # this is for contractions eg: "don't --> dont" instead of "don't --> don 't"
-        text = text.replace("’t","t")
-        text = casual._replace_html_entities(text) 
-        text = casual.remove_handles(text)
+        text = preprocess_twitter.tokenize(text)
+        
         text = casual.reduce_lengthening(text)
-        text = cleanString(setupRegexes('twitterProAna'),text)                
+        text = cleanString(setupRegexes('twitterProAna'),text)  
+        text = ' '.join([span for notentity,span in tweetPreprocessor(text, ("urls", "users", "lists")) if notentity]) 
+        text = text.replace('\t','')
+        text = text.replace('< ','<')
+        text = text.replace(' >','>')
+        text = text.replace('):', '<sadface>')
+        text = text.replace('(:', '<smile>')
+        return ' '.join(text.split())
 
-        text = ' '.join([span for notentity,span in tweetPreprocessor(text, ("urls", "users", "lists")) if notentity])        
-        return text
+    def tokenise_tweet(text):
+        text = preprocess_twitter.tokenize(text)
+        text = preprocess_tweet(text)     
+        return ' '.join(text.split())
     
-    def _convert_text_to_vector(self, text, Dictionary, DATA_FORMAT):
+    def _convert_text_to_vector(self, text, text_input, Dictionary, DATA_FORMAT):
               
         tmp = []
         for token in text.split():
@@ -113,28 +123,32 @@ class hashTagClassification(EmotionPlugin):
         
         n2gramVector,n3gramVector,n4gramVector = self._tweetToNgramVector(text)
         embeddingsVector = self._ModWordVectors(self._tweetToWordVectors(Dictionary,text))
-        additionalVector = self._capitalRatio(text)
+        additionalVector = self._capitalRatio(text_input)
         
-        X4 = np.asarray(self._bindTwoVectors(n4gramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1) 
-        X3 = np.asarray(self._bindTwoVectors(n3gramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1)
-        X2 = np.asarray(self._bindTwoVectors(n2gramVector,self._bindTwoVectors(additionalVector, embeddingsVector)) ).reshape(1,-1)
+        X4 = np.asarray( self._bind_vectors((n4gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1) 
+        X3 = np.asarray( self._bind_vectors((n3gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
+        X2 = np.asarray( self._bind_vectors((n2gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
 
         X = {'sadness':X4,'disgust':X4,'surprise':X4, 'anger':X2, 'fear':X4,'joy':X3}
 
         return(X)
-
-    def _load_word_vectors(self,  filename="wordvectors-glove.twitter.27B.100d"):
         
-        Dictionary = {}
-        for line in open(os.path.join(os.path.dirname(__file__),filename), 'rb'): 
-            line_d = line.decode('utf-8').split(', ')
-            token, token_id = line_d[0], line_d[1]
-            token_vector = np.array(line_d[2:], dtype = 'float32')    
-            if(np.std(token_vector) != 0.0):
-                Dictionary[token] = token_vector
+    def _load_word_vectors(self,  filename = 'glove.twitter.27B.200d.txt.gz', sep = ' ', uniqueTokens = None):
 
+        Dictionary = {}
+
+        for line in gzip.open(filename, 'rb'): 
+            line_d = line.decode('utf-8').split(sep)
+            token = line_d[0]
+            token_vector = np.array(line_d[1:], dtype = 'float32')   
+            if(uniqueTokens):
+                if(token in uniqueTokens):                
+                    Dictionary[token] = token_vector
+            else:
+                Dictionary[token] = token_vector
+                
         return(Dictionary)
-    
+
     def _tweetToNgramVector(self, text):
         return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0], self._ngramizers[2].transform([text,text]).toarray()[0])        
 
@@ -151,12 +165,13 @@ class hashTagClassification(EmotionPlugin):
                 if token in Dictionary:
                     output.append(Dictionary[token])            
         return(output)
+    
     def _ModWordVectors(self, x, mod=True):
         if(len(x) == 0):       
             if(mod):
-                return(np.zeros(self.EMBEDDING_DIM*3, dtype='float32'))
+                return(np.zeros(self.EMBEDDINGS_DIM*3, dtype='float32'))
             else:
-                return(np.zeros(self.EMBEDDING_DIM, dtype='float32'))
+                return(np.zeros(self.EMBEDDINGS_DIM, dtype='float32'))
         m =  np.matrix(x)
         if(mod):
             xMean = np.array(m.mean(0))[0]
@@ -166,9 +181,13 @@ class hashTagClassification(EmotionPlugin):
             return(xX)
         else:
             return(np.array(m.mean(0))[0])
-    def _bindTwoVectors(self, x0,x1):
+        
+    def _bindTwoVectors(self, x0, x1):
         xX = np.array(list(itertools.chain(x0,x1)),dtype='float32')
         return(xX) 
+    
+    def _bind_vectors(self, x):
+        return np.concatenate(x)  
     
     def _capitalRatio(self, tweet):
     
@@ -215,12 +234,11 @@ class hashTagClassification(EmotionPlugin):
     
     def analyse(self, **params):
         logger.debug("Hashtag SVM Analysing with params {}".format(params))
-        
-        # self._ESTIMATOR = params.get("estimator", None)
-        
+                
         text_input = params.get("input", None) 
         text = self._text_preprocessor(text_input)        
-        X = self._convert_text_to_vector(text, self._Dictionary, self._DATA_FORMAT) 
+        X = self._convert_text_to_vector(text=text, text_input=text_input, Dictionary=self._Dictionary, DATA_FORMAT=self._DATA_FORMAT)   
+            
         feature_text = self._compare_tweets(X=X, classifiers=self._classifiers)
         response = Results()
 
