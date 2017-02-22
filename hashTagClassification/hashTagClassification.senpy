@@ -22,8 +22,7 @@
         "stop_words",
         "regex",
         "twitter-text-python",
-        "senpy",
-        "gzip"],
+        "senpy"],
         
     "centroids": {
         "anger": {

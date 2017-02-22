@@ -52,11 +52,17 @@ class hashTagClassification(EmotionPlugin):
                                     'fear':'fear',
                                     'joy':'joy'}
         self.EXTENSION = '.dump'
+        self._paths = {
+            "word_emb": "glove.twitter.27B.200d.cut.txt",
+            "word_freq": 'wordFrequencies.dump',
+            "classifiers" : 'classifiers',            
+            "ngramizers": 'ngramizers'
+            }
         self._emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy']  
         self.EMBEDDINGS_DIM = 200  
         self.WORD_FREQUENCY_TRESHOLD = 3
         
-        self._uniqueTokens = {}
+        self._wordFrequencies = {}
 
         self._classifiers = []
         self._DATA_FORMAT = 'weng'
@@ -96,21 +102,27 @@ class hashTagClassification(EmotionPlugin):
             "disgust": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#disgust", 
             "fear": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#negative-fear", 
             "joy": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#joy", 
-            "neutral": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#neutral-emotion", 
+            "neutral": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#neutral-emotion",             
             "sadness": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#sadness"
             }
-
+        
+        self._centroid_mappings = {
+            "V": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#valence",
+            "A": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#arousal",
+            "D": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#dominance"          
+            }
+        
 
     def activate(self, *args, **kwargs):
         
-        self._Dictionary = self._load_word_vectors(filename= "glove.twitter.27B.200d.cut.txt", zipped = False)
-        self._uniqueTokens = self._load_unique_tokens(filename = 'uniqueTokens.dump')
-        self._classifiers = self._load_classifiers(DATA_FORMAT=self._DATA_FORMAT, ESTIMATOR=self._ESTIMATOR, emoNames=self._emoNames)
+        self._Dictionary = self._load_word_vectors(filename= self._paths["word_emb"], zipped = False)
+        self._wordFrequencies = self._load_unique_tokens(filename = self._paths["word_freq"])
+        self._classifiers = self._load_classifiers(PATH=self._paths["classifiers"], ESTIMATOR=self._ESTIMATOR, emoNames=self._emoNames)
         self._stop_words = get_stop_words('en')
 
         self._ngramizers = []                              
         for n_grams in [2,3,4]:
-            filename = os.path.join(os.path.dirname(__file__), 'ngramizers/', str(n_grams) + 'gramizer' + self.EXTENSION)
+            filename = os.path.join(os.path.dirname(__file__), self._paths["ngramizers"], str(n_grams)+'gramizer.dump')
             self._ngramizers.append( joblib.load(filename) )
 
         logger.info("hashTagClassification plugin is ready to go!")
@@ -145,7 +157,7 @@ class hashTagClassification(EmotionPlugin):
         tmp = []
         for token in text.split():
             try:
-                if(self._uniqueTokens[token] >= self.WORD_FREQUENCY_TRESHOLD):
+                if(self._wordFrequencies[token] >= self.WORD_FREQUENCY_TRESHOLD):
                     if(not token in self._stop_words):
                         tmp.append(token)
             except IndexError:
@@ -166,7 +178,7 @@ class hashTagClassification(EmotionPlugin):
 
         return(X)
         
-    def _load_word_vectors(self,  filename = 'glove.twitter.27B.200d.txt.gz', sep = ' ', uniqueTokens = None, zipped = False):
+    def _load_word_vectors(self,  filename = 'glove.twitter.27B.200d.txt.gz', sep = ' ', wordFrequencies = None, zipped = False):
         
         filename = os.path.join(os.path.dirname(__file__),filename)
         Dictionary = {}
@@ -176,8 +188,8 @@ class hashTagClassification(EmotionPlugin):
                 line_d = line.decode('utf-8').split(sep)
                 token = line_d[0]
                 token_vector = np.array(line_d[1:], dtype = 'float32')   
-                if(uniqueTokens):
-                    if(token in uniqueTokens):                
+                if(wordFrequencies):
+                    if(token in wordFrequencies):                
                         Dictionary[token] = token_vector
                 else:
                     Dictionary[token] = token_vector
@@ -186,8 +198,8 @@ class hashTagClassification(EmotionPlugin):
                 line_d = line.decode('utf-8').split(sep)
                 token = line_d[0]
                 token_vector = np.array(line_d[1:], dtype = 'float32')   
-                if(uniqueTokens):
-                    if(token in uniqueTokens):                
+                if(wordFrequencies):
+                    if(token in wordFrequencies):                
                         Dictionary[token] = token_vector
                 else:
                     Dictionary[token] = token_vector
@@ -249,13 +261,13 @@ class hashTagClassification(EmotionPlugin):
         return(np.asarray([firstCap/length,allCap/length]))      
 
     
-    def _load_classifiers(self, DATA_FORMAT, ESTIMATOR, emoNames):
+    def _load_classifiers(self, PATH, ESTIMATOR, emoNames):
         
         SEP = '/'
         models = []
                 
         for EMOTION in range(len(emoNames)):
-            filename = ESTIMATOR +SEP+ DATA_FORMAT +SEP+ str(emoNames[EMOTION]) + self.EXTENSION
+            filename = PATH+SEP+ESTIMATOR+SEP+ str(emoNames[EMOTION]) + self.EXTENSION
             filename = os.path.join(os.path.dirname(__file__),filename)
             m = joblib.load(filename)
             models.append( m )
@@ -263,7 +275,7 @@ class hashTagClassification(EmotionPlugin):
         return(models)
     
     
-    def _load_unique_tokens(self, filename = 'uniqueTokens.dump'):
+    def _load_unique_tokens(self, filename = 'wordFrequencies.dump'):
     
         filename = os.path.join(os.path.dirname(__file__),filename)
         return(joblib.load(filename))
@@ -279,15 +291,13 @@ class hashTagClassification(EmotionPlugin):
         logger.debug("Hashtag SVM Analysing with params {}".format(params))
                 
         text_input = params.get("input", None) 
-        #self._ESTIMATOR = params.get("estimator", None) 
-        
+                    
         text = self._text_preprocessor(text_input)        
         X = self._convert_text_to_vector(text=text, text_input=text_input, Dictionary=self._Dictionary, DATA_FORMAT=self._DATA_FORMAT)   
             
         feature_text = self._compare_tweets(X=X, classifiers=self._classifiers)
-        response = Results()
+        response = Results()        
         
-        #if(self._ESTIMATOR == 'x'):
             #entry = Entry(id="Entry",
             #              text=text_input)
             #emotionSet = EmotionSet(id="Emotions0")
@@ -296,35 +306,37 @@ class hashTagClassification(EmotionPlugin):
             #for i in feature_text:
             #    emotions.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
             #                            onyx__hasEmotionIntensity=feature_text[i]))
-            # v = np.average([centroids[self._wnaffect_mappings[i]] for i in feature_text if feature_text[i]==1])
             
-            #print('V=',np.mean([self.centroids[i]['V'] for i in feature_text if feature_text[i]==1]))
-            #print('A=',np.mean([self.centroids[i]['A'] for i in feature_text if feature_text[i]==1]))
-            #print('D=',np.mean([self.centroids[i]['D'] for i in feature_text if feature_text[i]==1]))
             #entry.emotions = [emotionSet]
             #response.entries.append(entry)
             
-        #elif(self._ESTIMATOR == 'LinearSVC'):
         response = Results()
 
-        entry = Entry()
-        entry.nif__isString = text_input
+        entry = Entry(id="Entry",text=text_input)
+        #entry.nif__isString = text_input
 
         emotions = EmotionSet()
-        emotions.id = "Emotions0"
+        emotions.id = "Emotions"
 
-        emotion1 = Emotion(id="Emotion0")
+        emotion1 = Emotion(id="Emotion")
         
+        # dummy fix for the absence of 'surprise' centroid
+        
+        empty = False
+        count = 0
         for i in feature_text:
             if feature_text[i] != 0 and i != 'surprise':                
                 emotion1["onyx:hasEmotionCategory_"+str(i)] = self.emotions_ontology[i]
-                
-        emotion1["http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#valence"] = np.mean([self.centroids[i]['V'] for i in feature_text if (feature_text[i]==1 and i != 'surprise')])
-        emotion1["http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#arousal"] = np.mean([self.centroids[i]['A'] for i in feature_text if (feature_text[i]==1 and i != 'surprise')])
-        emotion1["http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#dominance"] = np.mean([self.centroids[i]['D'] for i in feature_text if (feature_text[i]==1 and i != 'surprise')])
+                count += 1
+                 
+        for dimension in ['V','A','D']:
+            if(count > 0): 
+                value = np.mean([self.centroids[i][dimension] for i in feature_text if (feature_text[i]==1 and i != 'surprise')])  
+            else:
+                value = 5.0
+            emotion1[self._centroid_mappings[dimension]] = value 
 
         emotions.onyx__hasEmotion.append(emotion1)
-
 
         entry.emotions = [emotions,]
         # entry.language = lang
