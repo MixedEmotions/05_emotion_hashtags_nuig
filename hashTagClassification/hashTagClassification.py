@@ -312,8 +312,8 @@ class hashTagClassification(EmotionPlugin):
             
         response = Results()
 
-        entry = Entry(id="Entry",text=text_input)
-        #entry.nif__isString = text_input
+        entry = Entry()
+        entry.nif__isString = text_input
 
         emotions = EmotionSet()
         emotions.id = "Emotions"
