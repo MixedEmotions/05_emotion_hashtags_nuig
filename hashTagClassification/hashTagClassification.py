@@ -241,16 +241,41 @@ class hashTagClassification(EmotionPlugin):
             
         feature_text = self._compare_tweets(X=X, classifiers=self._classifiers)
         response = Results()
+        
+        if(_self.ESTIMATOR == 'LinearSVC'):
+            entry = Entry(id="Entry",
+                          text=text_input)
+            emotionSet = EmotionSet(id="Emotions0")
+            emotions = emotionSet.onyx__hasEmotion
 
-        entry = Entry(id="Entry",
-                      text=text_input)
-        emotionSet = EmotionSet(id="Emotions0")
-        emotions = emotionSet.onyx__hasEmotion
+            for i in feature_text:
+                emotions.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
+                                        onyx__hasEmotionIntensity=feature_text[i]))
 
-        for i in feature_text:
-            emotions.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
-                                    onyx__hasEmotionIntensity=feature_text[i]))
+            entry.emotions = [emotionSet]
+            response.entries.append(entry)
+            
+        elif(_self.ESTIMATOR == 'SVC'):
+            response = Results()
 
-        entry.emotions = [emotionSet]
-        response.entries.append(entry)
+            entry = Entry()
+            entry.nif__isString = text_input
+
+            emotions = EmotionSet()
+            emotions.id = "Emotions0"
+
+            emotion1 = Emotion(id="Emotion0")
+
+            emotion1["onyx:hasEmotionCategory"] = self.emotions_ontology[feature_set['emotion']]
+            emotion1["http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#valence"] = feature_set['V']
+            emotion1["http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#arousal"] = feature_set['A']
+            emotion1["http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#dominance"] = feature_set['D']
+
+            emotions.onyx__hasEmotion.append(emotion1)
+
+
+            entry.emotions = [emotions,]
+            # entry.language = lang
+            response.entries.append(entry)
+            
         return response
