@@ -173,6 +173,8 @@ class hashTagClassification(EmotionPlugin):
         X4 = np.asarray( self._bind_vectors((n4gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1) 
         X3 = np.asarray( self._bind_vectors((n3gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
         X2 = np.asarray( self._bind_vectors((n2gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
+        
+        # print(len(X4[0]),len(X3[0]),len(X2[0]))
 
         X = {'sadness':X4, 'disgust':X4, 'surprise':X4, 'anger':X2, 'fear':X4, 'joy':X3}
 
@@ -281,7 +283,7 @@ class hashTagClassification(EmotionPlugin):
         return(joblib.load(filename))
         
 
-    def _compare_tweets(self, X, classifiers):
+    def _extract_features(self, X, classifiers):
                 
         feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self._emoNames, classifiers)} 
         return feature_set        
@@ -295,7 +297,7 @@ class hashTagClassification(EmotionPlugin):
         text = self._text_preprocessor(text_input)        
         X = self._convert_text_to_vector(text=text, text_input=text_input, Dictionary=self._Dictionary, DATA_FORMAT=self._DATA_FORMAT)   
             
-        feature_text = self._compare_tweets(X=X, classifiers=self._classifiers)
+        feature_text = self._extract_features(X=X, classifiers=self._classifiers)
         response = Results()        
         
             #entry = Entry(id="Entry",
