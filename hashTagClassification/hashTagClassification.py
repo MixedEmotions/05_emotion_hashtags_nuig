@@ -326,9 +326,10 @@ class hashTagClassification(EmotionPlugin):
         
         empty = False
         count = 0
+        emotion1["onyx:hasEmotionCategory"] = []
         for i in feature_text:
-            if feature_text[i] != 0 and i != 'surprise':                
-                emotion1["onyx:hasEmotionCategory_"+str(i)] = self.emotions_ontology[i]
+            if feature_text[i] != 0 and i != 'surprise': 
+                emotion1["onyx:hasEmotionCategory"].append(self.emotions_ontology[i])
                 count += 1
                  
         for dimension in ['V','A','D']:
