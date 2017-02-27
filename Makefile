@@ -1,7 +1,7 @@
 PYVERSION=3.5
 NAME=senpy-plugins-nuig
 REPO=registry.insight-centre.org/ianwoo
-VERSION=0.2-insight
+VERSION=0.3-insight
 PLUGINS= $(filter %/, $(wildcard */))
 
 
