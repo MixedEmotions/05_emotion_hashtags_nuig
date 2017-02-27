@@ -11,4 +11,5 @@ ADD . /senpy-plugins
 RUN senpy -f /senpy-plugins --only-install
 
 WORKDIR /senpy-plugins/
-EXPOSE 5000
+EXPOSE 8892
+ENTRYPOINT ["python", "-m", "senpy", "-f", ".", "--host", "0.0.0.0", "-p", "8892"]

@@ -1,7 +1,7 @@
 PYVERSION=3.5
-NAME=05_emotion_hashtags_nuig
-REPO=mixedemotions
-VERSION=0.2
+NAME=senpy-plugins-nuig
+REPO=registry.insight-centre.org/ianwoo
+VERSION=0.2-insight
 PLUGINS= $(filter %/, $(wildcard */))
 
 
@@ -20,6 +20,6 @@ clean:
 	@docker images | awk '/$(REPO)\/$(NAME)/{ split($$2, vers, "-"); if(vers[1] != "${VERSION}"){ print $$1":"$$2;}}' | xargs docker rmi 2>/dev/null|| true
 
 run: build
-	docker run --rm -p 5000:5000 -ti '$(REPO)/$(NAME):$(VERSION)-python$(PYVERSION)'
+	docker run --rm -p 8892:8892 -ti '$(REPO)/$(NAME):$(VERSION)-python$(PYVERSION)'
 
 .PHONY: test test-% build-% build test test_pip run clean
