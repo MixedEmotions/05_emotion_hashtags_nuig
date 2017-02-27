@@ -155,7 +155,8 @@ def tweetPreprocessor(text, entitiesToDetect=("urls", "users", "lists", "tags"))
     try:
         entities = tweetParser.parse(text)
     except AttributeError:
-        return (True, text)
+        yield (True, text)
+        return
     
     spans = []
     for label in entitiesToDetect:
