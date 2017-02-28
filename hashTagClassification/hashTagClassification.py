@@ -65,7 +65,6 @@ class hashTagClassification(EmotionPlugin):
         self._wordFrequencies = {}
 
         self._classifiers = []
-        self._DATA_FORMAT = 'weng'
         self._ESTIMATOR = 'LinearSVC'
         self._Dictionary = {}
         
@@ -94,6 +93,11 @@ class hashTagClassification(EmotionPlugin):
                                 "A": 5.21, 
                                 "D": 2.82, 
                                 "V": 2.21
+                            },
+                            "neutral": {
+                                "A": 5.0, 
+                                "D": 5.0, 
+                                "V": 5.0
                             }
                         }
         
@@ -115,9 +119,13 @@ class hashTagClassification(EmotionPlugin):
 
     def activate(self, *args, **kwargs):
         
+        
         self._Dictionary = self._load_word_vectors(filename= self._paths["word_emb"], zipped = False)
+        
         self._wordFrequencies = self._load_unique_tokens(filename = self._paths["word_freq"])
+        
         self._classifiers = self._load_classifiers(PATH=self._paths["classifiers"], ESTIMATOR=self._ESTIMATOR, emoNames=self._emoNames)
+        
         self._stop_words = get_stop_words('en')
 
         self._ngramizers = []                              
@@ -152,7 +160,7 @@ class hashTagClassification(EmotionPlugin):
         text = preprocess_tweet(text)     
         return ' '.join(text.split())
     
-    def _convert_text_to_vector(self, text, text_input, Dictionary, DATA_FORMAT):
+    def _convert_text_to_vector(self, text, text_input, Dictionary):
               
         tmp = []
         for token in text.split():
@@ -284,8 +292,12 @@ class hashTagClassification(EmotionPlugin):
         
 
     def _extract_features(self, X, classifiers):
-                
-        feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self._emoNames, classifiers)} 
+        if(self._ESTIMATOR == 'SVC'):        
+            feature_set = {emo: int((clf.predict_proba(X[emo])[0][1])*100) for emo,clf in zip(self._emoNames, classifiers)}
+            
+            print(feature_set)
+        else:
+            feature_set = {emo: int(clf.predict(X[emo])) for emo,clf in zip(self._emoNames, classifiers)} 
         return feature_set        
     
     
@@ -293,24 +305,24 @@ class hashTagClassification(EmotionPlugin):
         logger.debug("Hashtag SVM Analysing with params {}".format(params))
                 
         text_input = params.get("input", None) 
-                    
+        
         text = self._text_preprocessor(text_input)        
-        X = self._convert_text_to_vector(text=text, text_input=text_input, Dictionary=self._Dictionary, DATA_FORMAT=self._DATA_FORMAT)   
+        X = self._convert_text_to_vector(text=text, text_input=text_input, Dictionary=self._Dictionary)   
             
         feature_text = self._extract_features(X=X, classifiers=self._classifiers)
         response = Results()        
         
-            #entry = Entry(id="Entry",
-            #              text=text_input)
-            #emotionSet = EmotionSet(id="Emotions0")
-            #emotions = emotionSet.onyx__hasEmotion
+        #entry = Entry(id="Entry",
+        #              text=text_input)
+        #emotionSet = EmotionSet(id="Emotions0")
+        #emotions = emotionSet.onyx__hasEmotion
 
-            #for i in feature_text:
-            #    emotions.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
-            #                            onyx__hasEmotionIntensity=feature_text[i]))
-            
-            #entry.emotions = [emotionSet]
-            #response.entries.append(entry)
+        #for i in feature_text:
+        #    emotions.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
+        #                            onyx__hasEmotionIntensity=feature_text[i]))
+
+        #entry.emotions = [emotionSet]
+        #response.entries.append(entry)
             
         response = Results()
 
@@ -324,20 +336,23 @@ class hashTagClassification(EmotionPlugin):
         
         # dummy fix for the absence of 'surprise' centroid
         
+        
+            
         empty = False
         count = 0
         emotion1["onyx:hasEmotionCategory"] = []
         for i in feature_text:
-            if feature_text[i] != 0 and i != 'surprise': 
+            if feature_text[i] >= 0.5 and i != 'surprise': 
                 emotion1["onyx:hasEmotionCategory"].append(self.emotions_ontology[i])
                 count += 1
-                 
+
         for dimension in ['V','A','D']:
             if(count > 0): 
-                value = np.mean([self.centroids[i][dimension] for i in feature_text if (feature_text[i]==1 and i != 'surprise')])  
+                value = np.average([self.centroids[i][dimension] for i in feature_text if (i != 'surprise')], weights=[feature_text[i] for i in feature_text if (i != 'surprise')]) 
             else:
-                value = 5.0
+                value = self.centroids['neutral'][dimension]
             emotion1[self._centroid_mappings[dimension]] = value 
+        
 
         emotions.onyx__hasEmotion.append(emotion1)
 

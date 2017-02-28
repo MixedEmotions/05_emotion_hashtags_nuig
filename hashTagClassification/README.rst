@@ -1,10 +1,8 @@
-This plugin uses WNAffect labels for emotion analysis.
-
-The emotextWAF.senpy file can be copied and modified to use different versions of wnaffect with the same python code.
+This plugin uses SVM Classifiers trained on HashTag corpora using word embedding and N-grams for emotion analysis.
 
 
 Known issues
 ============
 
-  * This plugin uses the pattern library, which means it will only run on python 2.7
-  * Wnaffect and corpora files are not included in the repository, but can be easily added either to the docker image (using a volume) or in a new docker image.
+  * This plugin is tested on python 3.5
+  * Explicit arhcive of word embeddings are included in the repository, the full archive can be easily added by running a script for downloading the full version.
