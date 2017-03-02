@@ -323,8 +323,12 @@ class hashTagClassification(EmotionPlugin):
         emotionSet.onyx__hasEmotion.append(emotion1)    
         
         for i in feature_text:
-            emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
+            if(self.ESTIMATOR == 'SVC'):
+                emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
                                     onyx__hasEmotionIntensity=feature_text[i]))
+            else:
+                if(feature_text[i] > 0):
+                    emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i]))
         
         entry.emotions = [emotionSet,]
         
