@@ -6,8 +6,8 @@
     "version": "0.1",
 
     "extra_params": {
-        "language": {
-            "aliases": ["language", "l"],
+        "estimator": {
+            "aliases": ["estimator", "e"],
             "required": true,
             "options": ["SVC", "LinearSVC"],
             "default": "LinearSVC"
