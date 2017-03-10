@@ -6,6 +6,7 @@ RUN mkdir -p /senpy-plugins
 RUN pip install pytest
 RUN pip install regex
 ADD . /senpy-plugins
+COPY logo-Insight.png /usr/src/app/senpy/static/img/gsi.png
 RUN senpy -f /senpy-plugins --only-install
 
 WORKDIR /senpy-plugins/
