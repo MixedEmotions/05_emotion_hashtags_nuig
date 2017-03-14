@@ -25,7 +25,7 @@ from nltk.tokenize import TweetTokenizer
 import nltk.tokenize.casual as casual
 
 import gzip
-
+from datetime import datetime 
 
 
 
@@ -120,18 +120,28 @@ class hashTagClassification(EmotionPlugin):
 
     def activate(self, *args, **kwargs):
         
-        
+        st = datetime.now()
         self._Dictionary = self._load_word_vectors(filename= self._paths["word_emb"], zipped = False)
-        self._wordFrequencies = self._load_unique_tokens(filename = self._paths["word_freq"])
-        
-        self._classifiers = {estimator: self._load_classifier(PATH=self._paths["classifiers"], ESTIMATOR=estimator, emoNames=self._emoNames) for estimator in self._estimators_list}
-    
-        self._stop_words = get_stop_words('en')
+        logger.info("{} {}".format(datetime.now() - st, "loaded _Dictionary"))
 
+        st = datetime.now()
+        self._wordFrequencies = self._load_unique_tokens(filename = self._paths["word_freq"])
+        logger.info("{} {}".format(datetime.now() - st, "loaded _wordFrequencies"))
+
+        st = datetime.now()
+        self._classifiers = {estimator: self._load_classifier(PATH=self._paths["classifiers"], ESTIMATOR=estimator, emoNames=self._emoNames) for estimator in self._estimators_list}
+        logger.info("{} {}".format(datetime.now() - st, "loaded _classifiers"))
+
+        st = datetime.now()
+        self._stop_words = get_stop_words('en')
+        logger.info("{} {}".format(datetime.now() - st, "loaded _stop_words"))
+
+        st = datetime.now()
         self._ngramizers = []                              
         for n_grams in [2,3,4]:
             filename = os.path.join(os.path.dirname(__file__), self._paths["ngramizers"], str(n_grams)+'gramizer.dump')
             self._ngramizers.append( joblib.load(filename) )
+        logger.info("{} {}".format(datetime.now() - st, "loaded _ngramizers"))
 
         logger.info("hashTagClassification plugin is ready to go!")
         
@@ -266,16 +276,23 @@ class hashTagClassification(EmotionPlugin):
 
     
     def _load_classifier(self, PATH, ESTIMATOR, emoNames):
-        
+
+
         SEP = '/'
         models = []
+
+        st = datetime.now()
                 
         for EMOTION in range(len(emoNames)):
             filename = PATH+SEP+ESTIMATOR+SEP+ str(emoNames[EMOTION]) + self.EXTENSION
             filename = os.path.join(os.path.dirname(__file__),filename)
+
+            st = datetime.now()
             m = joblib.load(filename)
+            logger.info("{} loaded {} classifier {}".format(datetime.now() - st, ESTIMATOR, emoNames[EMOTION]))
+
             models.append( m )
-            
+
         return(models)
     
     
