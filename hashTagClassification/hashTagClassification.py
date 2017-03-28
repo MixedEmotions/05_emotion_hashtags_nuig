@@ -334,7 +334,11 @@ class hashTagClassification(EmotionPlugin):
         emotion1 = Emotion()        
 
         for dimension in ['V','A','D']:
-            value = np.average([self.centroids[i][dimension] for i in feature_text if (i != 'surprise')], weights=[feature_text[i] for i in feature_text if (i != 'surprise')]) 
+            weights = [feature_text[i] for i in feature_text if (i != 'surprise')]
+            if False in all(v == 0 for v in weights):
+                value = np.average([self.centroids[i][dimension] for i in feature_text if (i != 'surprise')], weights=weights) 
+            else:
+                value = 5.0
             emotion1[self._centroid_mappings[dimension]] = value         
 
         emotionSet.onyx__hasEmotion.append(emotion1)    
