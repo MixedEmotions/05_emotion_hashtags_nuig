@@ -335,7 +335,7 @@ class hashTagClassification(EmotionPlugin):
 
         for dimension in ['V','A','D']:
             weights = [feature_text[i] for i in feature_text if (i != 'surprise')]
-            if False in all(v == 0 for v in weights):
+            if not all(v == 0 for v in weights):
                 value = np.average([self.centroids[i][dimension] for i in feature_text if (i != 'surprise')], weights=weights) 
             else:
                 value = 5.0
