@@ -64,3 +64,5 @@ target/
 */a-synsets.xml
 */wn16.txt
 fivePointRegression
+hashTagClassification/classifiers/LSTM/model.json
+hashTagClassification/classifiers/LSTM/model_weights.h5

@@ -23,7 +23,8 @@
         "regex",
         "twitter-text-python",
         "senpy",
-        "keras"],
+        "keras"
+        ],
         
     "centroids": {
         "anger": {

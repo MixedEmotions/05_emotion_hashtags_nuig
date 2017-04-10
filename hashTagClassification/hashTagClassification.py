@@ -27,6 +27,8 @@ import nltk.tokenize.casual as casual
 import gzip
 from datetime import datetime 
 
+from multiprocessing import Pool
+
 
 
 class hashTagClassification(EmotionPlugin):
@@ -137,11 +139,13 @@ class hashTagClassification(EmotionPlugin):
         logger.info("{} {}".format(datetime.now() - st, "loaded _stop_words"))
 
         st = datetime.now()
-        self._ngramizers = []                              
-        for n_grams in [2,3,4]:
-            filename = os.path.join(os.path.dirname(__file__), self._paths["ngramizers"], str(n_grams)+'gramizer.dump')
-            self._ngramizers.append( joblib.load(filename) )
-        logger.info("{} {}".format(datetime.now() - st, "loaded _ngramizers"))
+        self._ngramizer = joblib.load(os.path.join(os.path.dirname(__file__), self._paths["ngramizers"], 'ngramizer.dump'))                              
+        #for n_grams in [2,3,4]:
+        #    filename = os.path.join(os.path.dirname(__file__), self._paths["ngramizers"], str(n_grams)+'gramizer.dump')
+        #    self._ngramizers.append( joblib.load(filename) )
+            
+        
+        logger.info("{} {}".format(datetime.now() - st, "loaded _ngramizer"))
 
         logger.info("hashTagClassification plugin is ready to go!")
         
@@ -163,6 +167,7 @@ class hashTagClassification(EmotionPlugin):
         text = text.replace('\t','')
         text = text.replace('< ','<').replace(' >','>')
         text = text.replace('):', '<sadface>').replace('(:', '<smile>')
+        text = text.replace(" 't", "t")#.replace("#", "")
         return ' '.join(text.split())
 
     def tokenise_tweet(text):
@@ -180,20 +185,19 @@ class hashTagClassification(EmotionPlugin):
                         tmp.append(token)
             except IndexError:
                 pass
-        text = ' '.join(tmp)
-             
-        X = []        
+        text = ' '.join(tmp)                
         
-        n2gramVector,n3gramVector,n4gramVector = self._tweetToNgramVector(text)
+        #n2gramVector,n3gramVector,n4gramVector = self._tweetToNgramVector(text)
+        ngramVector = self._tweetToNgramVector(text)
         embeddingsVector = self._ModWordVectors(self._tweetToWordVectors(Dictionary,text))
         additionalVector = self._capitalRatio(text_input)
         
-        X4 = np.asarray( self._bind_vectors((n4gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1) 
-        X3 = np.asarray( self._bind_vectors((n3gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
-        X2 = np.asarray( self._bind_vectors((n2gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
-
-        X = {'sadness':X4, 'disgust':X4, 'surprise':X4, 'anger':X2, 'fear':X4, 'joy':X3}
-
+        #X4 = np.asarray( self._bind_vectors((n4gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1) 
+        #X3 = np.asarray( self._bind_vectors((n3gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)
+        #X2 = np.asarray( self._bind_vectors((n2gramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)        
+        #X = {'sadness':X4, 'disgust':X4, 'surprise':X4, 'anger':X2, 'fear':X4, 'joy':X3}
+        
+        X = np.asarray( self._bind_vectors((ngramVector,additionalVector, embeddingsVector)) ).reshape(1,-1)   
         return(X)
         
     def _load_word_vectors(self,  filename = 'glove.twitter.27B.200d.txt.gz', sep = ' ', wordFrequencies = None, zipped = False):
@@ -221,7 +225,9 @@ class hashTagClassification(EmotionPlugin):
         return(Dictionary)
 
     def _tweetToNgramVector(self, text):
-        return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0], self._ngramizers[2].transform([text,text]).toarray()[0])        
+        
+        return(self._ngramizer.transform([text,text]).toarray()[0])  
+        #return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0], self._ngramizers[2].transform([text,text]).toarray()[0])        
 
     def _tweetToWordVectors(self, Dictionary, tweet, fixedLength=False):
         output = []    
@@ -276,24 +282,34 @@ class hashTagClassification(EmotionPlugin):
 
     
     def _load_classifier(self, PATH, ESTIMATOR, emoNames):
-
-
+        
         SEP = '/'
         models = []
 
         st = datetime.now()
-                
+
         for EMOTION in range(len(emoNames)):
             filename = PATH+SEP+ESTIMATOR+SEP+ str(emoNames[EMOTION]) + self.EXTENSION
             filename = os.path.join(os.path.dirname(__file__),filename)
-
             st = datetime.now()
             m = joblib.load(filename)
             logger.info("{} loaded {} classifier {}".format(datetime.now() - st, ESTIMATOR, emoNames[EMOTION]))
-
             models.append( m )
+            
+#         def _load_model_for_emotion(EMOTION):
+#             filename = PATH+SEP+ESTIMATOR+SEP+ str(emoNames[EMOTION]) + self.EXTENSION
+#             filename = os.path.join(os.path.dirname(__file__),filename)
 
-        return(models)
+#             st = datetime.now()
+#             m = joblib.load(filename)
+#             logger.info("{} loaded {} classifier {}".format(datetime.now() - st, ESTIMATOR, emoNames[EMOTION]))
+
+#             return m
+            
+#         with Pool(processes = len(emoNames)) as loading_pool:
+#             models = loading_pool.map(_load_model_for_emotion, range(len(emoNames)))
+            
+        return models
     
     
     def _load_unique_tokens(self, filename = 'wordFrequencies.dump'):
@@ -304,9 +320,9 @@ class hashTagClassification(EmotionPlugin):
 
     def _extract_features(self, X, classifiers, estimator):
         if(estimator == 'SVC'):        
-            feature_set = {emo: int((clf.predict_proba(X[emo])[0][1])*100) for emo,clf in zip(self._emoNames, classifiers[estimator])}
+            feature_set = {emo: int((clf.predict_proba(X)[0][1])*100) for emo,clf in zip(self._emoNames, classifiers[estimator])}
         else:
-            feature_set = {emo: int(clf.predict(X[emo])*100) for emo,clf in zip(self._emoNames, classifiers[estimator])} 
+            feature_set = {emo: int(clf.predict(X)*100) for emo,clf in zip(self._emoNames, classifiers[estimator])} 
             
         return feature_set        
     
