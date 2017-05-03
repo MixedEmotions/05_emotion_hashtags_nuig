@@ -1,0 +1,55 @@
+{
+    "name": "fivePointRegression",
+    "module": "fivePointRegression",
+    "description": "Emotion regressor using LSTM",
+    "author": "@vlaand",
+    "version": "0.1",
+     
+    "requirements": [
+        "nltk>=3.0.5",
+        "numpy>=1.8.2",
+        "scipy>=0.14.0",
+        "scikit-learn>=0.14.1",
+        "stop_words",
+        "regex",
+        "twitter-text-python",
+        "senpy",
+        "keras"
+        ],
+        
+    "centroids": {
+        "anger": {
+            "A": 6.95, 
+            "D": 5.1, 
+            "V": 2.7
+        }, 
+        "disgust": {
+            "A": 5.3, 
+            "D": 8.05, 
+            "V": 2.7
+        }, 
+        "fear": {
+            "A": 6.5, 
+            "D": 3.6, 
+            "V": 3.2
+        }, 
+        "joy": {
+            "A": 7.22, 
+            "D": 6.28, 
+            "V": 8.6
+        }, 
+        "sadness": {
+            "A": 5.21, 
+            "D": 2.82, 
+            "V": 2.21
+        }
+    },
+    "emotions_ontology": {
+        "anger": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#anger", 
+        "disgust": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#disgust", 
+        "fear": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#negative-fear", 
+        "joy": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#joy", 
+        "neutral": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#neutral-emotion", 
+        "sadness": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#sadness"
+    }
+}
