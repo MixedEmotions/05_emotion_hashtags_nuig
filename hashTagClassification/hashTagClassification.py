@@ -55,7 +55,7 @@ class hashTagClassification(EmotionPlugin):
                                     'joy':'joy'}
         self.EXTENSION = '.dump'
         self._paths = {
-            "word_emb": "glove.twitter.27B.200d.cut.txt",
+            "word_emb": "glove.twitter.27B.200d.txt.gz",
             "word_freq": 'wordFrequencies.dump',
             "classifiers" : 'classifiers',            
             "ngramizers": 'ngramizers'
@@ -123,7 +123,7 @@ class hashTagClassification(EmotionPlugin):
     def activate(self, *args, **kwargs):
         
         st = datetime.now()
-        self._Dictionary = self._load_word_vectors(filename= self._paths["word_emb"], zipped = False)
+        self._Dictionary = self._load_word_vectors(filename= self._paths["word_emb"], zipped = True)
         logger.info("{} {}".format(datetime.now() - st, "loaded _Dictionary"))
 
         st = datetime.now()
@@ -202,32 +202,31 @@ class hashTagClassification(EmotionPlugin):
         
     def _load_word_vectors(self,  filename = 'glove.twitter.27B.200d.txt.gz', sep = ' ', wordFrequencies = None, zipped = False):
         
-        filename = os.path.join(os.path.dirname(__file__),filename)
-        Dictionary = {}
-        
-        if(zipped): 
-            f = gzip.open(filename, 'rb')
-        else: 
-            f = open(filename, 'rb')
-            
-        for line in f: 
-            line_d = line.decode('utf-8').split(sep)
-            token = line_d[0]
-            token_vector = np.array(line_d[1:], dtype = 'float32')   
-            if(wordFrequencies):
-                if(token in wordFrequencies):                
+        filename = os.path.join(os.path.dirname(os.path.dirname(__file__)),filename)
+
+        def __read_file(f):
+            Dictionary = {}
+            for line in f: 
+                line_d = line.decode('utf-8').split(sep)
+                token = line_d[0]
+                token_vector = np.array(line_d[1:], dtype = 'float32')   
+                if(wordFrequencies):
+                    if(token in wordFrequencies):                
+                        Dictionary[token] = token_vector
+                else:
                     Dictionary[token] = token_vector
-            else:
-                Dictionary[token] = token_vector
+            return(Dictionary)
         
-        f.close()
-        
-        return(Dictionary)
+        if zipped:
+            with gzip.open(filename, 'rb') as f:
+                return(__read_file(f))
+        else:
+            with open(filename, 'rb') as f:
+                return(__read_file(f))
 
     def _tweetToNgramVector(self, text):
         
-        return(self._ngramizer.transform([text,text]).toarray()[0])  
-        #return(self._ngramizers[0].transform([text,text]).toarray()[0] , self._ngramizers[1].transform([text,text]).toarray()[0], self._ngramizers[2].transform([text,text]).toarray()[0])        
+        return(self._ngramizer.transform([text,text]).toarray()[0])       
 
     def _tweetToWordVectors(self, Dictionary, tweet, fixedLength=False):
         output = []    
@@ -315,7 +314,7 @@ class hashTagClassification(EmotionPlugin):
     def _load_unique_tokens(self, filename = 'wordFrequencies.dump'):
     
         filename = os.path.join(os.path.dirname(__file__),filename)
-        return(joblib.load(filename))
+        return joblib.load(filename)
         
 
     def _extract_features(self, X, classifiers, estimator):

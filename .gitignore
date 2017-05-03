@@ -63,6 +63,5 @@ target/
 */a-hierarchy.xml
 */a-synsets.xml
 */wn16.txt
-fivePointRegression
-hashTagClassification/classifiers/LSTM/model.json
-hashTagClassification/classifiers/LSTM/model_weights.h5
+glove.twitter.27B.100d.txt.gz
+glove.twitter.27B.200d.txt.gz
