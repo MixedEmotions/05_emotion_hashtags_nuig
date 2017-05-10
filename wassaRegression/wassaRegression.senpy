@@ -4,20 +4,19 @@
     "description": "Emotion regressor using LSTM",
     "author": "@vlaand",
     "version": "0.1",
-
-     
+    "async": False,
     "requirements": [
         "nltk>=3.0.5",
-        "numpy>=1.8.2",
-        "scipy>=0.14.0",
-        "scikit-learn>=0.14.1",
+        "numpy>=1.10.4",
+        "scipy>=0.18.1",
+        "scikit-learn>=0.17.1",
         "stop_words",
         "regex",
         "twitter-text-python",
         "senpy",
-        "keras"
-        ],
-        
+        "keras==1.1.0",
+        "h5py"
+        ],    
     "centroids": {
         "anger": {
             "A": 6.95, 
