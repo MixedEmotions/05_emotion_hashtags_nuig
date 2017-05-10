@@ -319,7 +319,7 @@ class hashTagClassification(EmotionPlugin):
 
     def _extract_features(self, X, classifiers, estimator):
         if(estimator == 'SVC'):        
-            feature_set = {emo: int((clf.predict_proba(X)[0][1])*100) for emo,clf in zip(self._emoNames, classifiers[estimator])}
+            feature_set = {emo: float((clf.predict_proba(X)[0][1])*100) for emo,clf in zip(self._emoNames, classifiers[estimator])}
         else:
             feature_set = {emo: int(clf.predict(X)*100) for emo,clf in zip(self._emoNames, classifiers[estimator])} 
             
@@ -345,6 +345,9 @@ class hashTagClassification(EmotionPlugin):
 
         emotionSet = EmotionSet()
         emotionSet.id = "Emotions"
+        
+        if(self.ESTIMATOR == 'SVC'):
+            emotionSet.onyx__maxIntensityValue = float(100.0)
 
         emotion1 = Emotion()        
 
@@ -360,11 +363,13 @@ class hashTagClassification(EmotionPlugin):
         
         for i in feature_text:
             if(self.ESTIMATOR == 'SVC'):
-                emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
-                                    onyx__hasEmotionIntensity=feature_text[i]))
+                emotionSet.onyx__hasEmotion.append(Emotion(
+                                    onyx__hasEmotionCategory = self._wnaffect_mappings[i],
+                                    onyx__hasEmotionIntensity = feature_text[i] ))
             else:
                 if(feature_text[i] > 0):
-                    emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i]))
+                    emotionSet.onyx__hasEmotion.append(Emotion(
+                            onyx__hasEmotionCategory = self._wnaffect_mappings[i]))
         
         entry.emotions = [emotionSet,]
         

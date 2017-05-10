@@ -59,7 +59,7 @@ class wassaRegression(EmotionPlugin):
                                     'anger':'anger',
                                     'fear':'fear',
                                     'joy':'joy'}
-        self._maxlen = 65        
+        self._maxlen = 55        
         
         self._savedModelPath = local_path + "/classifiers/LSTM/wassaRegression"
         self._path_wordembeddings = os.path.dirname(local_path) + '/glove.twitter.27B.100d.txt.gz'
@@ -91,12 +91,7 @@ class wassaRegression(EmotionPlugin):
                             "sadness": {
                                 "A": 5.21, 
                                 "D": 2.82, 
-                                "V": 2.21},
-                            "neutral": {
-                                "A": 5.0, 
-                                "D": 5.0, 
-                                "V": 5.0
-                            }
+                                "V": 2.21}
                         }        
         self.emotions_ontology = {
             "anger": "http://gsi.dit.upm.es/ontologies/wnaffect/ns#anger", 
@@ -112,14 +107,6 @@ class wassaRegression(EmotionPlugin):
             "A": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#arousal",
             "D": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#dominance"          
             }
-        self._blank = {
-            0:[1,0,0,0,0,0],
-            1:[0,1,0,0,0,0],
-            2:[0,0,1,0,0,0],
-            3:[0,0,0,1,0,0],
-            4:[0,0,0,0,1,0],
-            5:[0,0,0,0,0,1]
-        }
         
 
     def activate(self, *args, **kwargs):
@@ -236,14 +223,13 @@ class wassaRegression(EmotionPlugin):
         
         st = datetime.now()
            
-        text_input = params.get("input", None)
-        
+        text_input = params.get("input", None)        
         text = self._text_preprocessor(text_input)    
         
-        X = self._lists_to_vectors(text = text)   
-        
+        X = self._lists_to_vectors(text = text)           
         feature_text = self._extract_features(X = X) 
         
+        logger.info("{} {}".format(datetime.now() - st, "string analysed"))
             
         response = Results()
        
@@ -252,6 +238,8 @@ class wassaRegression(EmotionPlugin):
         
         emotionSet = EmotionSet()
         emotionSet.id = "Emotions"
+        
+        emotionSet.onyx__maxIntensityValue = float(100.0)
         
         emotion1 = Emotion() 
         for dimension in ['V','A','D']:
@@ -266,14 +254,11 @@ class wassaRegression(EmotionPlugin):
         
         for i in feature_text:
             emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
-                                    onyx__hasEmotionIntensity=float(feature_text[i])))
+                                    onyx__hasEmotionIntensity=float(feature_text[i])*100.0))
         
         entry.emotions = [emotionSet,]
         
-        response.entries.append(entry)
-        
-        
-        # entry.language = lang
+        response.entries.append(entry)  
             
         return response
 

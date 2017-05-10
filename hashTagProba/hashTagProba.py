@@ -119,14 +119,7 @@ class hashTagProba(EmotionPlugin):
             "A": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#arousal",
             "D": "http://www.gsi.dit.upm.es/ontologies/onyx/vocabularies/anew/ns#dominance"          
             }
-        self._blank = {
-            0:[1,0,0,0,0,0],
-            1:[0,1,0,0,0,0],
-            2:[0,0,1,0,0,0],
-            3:[0,0,0,1,0,0],
-            4:[0,0,0,0,1,0],
-            5:[0,0,0,0,0,1]
-        }
+        self._blank = [0] * len(self._emoNames)
         
 
     def activate(self, *args, **kwargs):
@@ -235,7 +228,11 @@ class hashTagProba(EmotionPlugin):
             y_predict = np.array(self._hashTagDLModel.predict(X))[0]
             
         else:
-            y_predict = np.array([self._blank[y_] for y_ in self._hashTagDLModel.predict_classes(X)][0])
+            blank = self._blank
+            for i,pred in enumerate(self._hashTagDLModel.predict_classes(X)):
+                print(i,pred)
+                blank[pred] = 1
+            y_predict = np.array(blank)
         feature_set = {emo: y_ for emo, y_ in zip(self._emoNames, y_predict)}
             
         return feature_set       
@@ -264,6 +261,9 @@ class hashTagProba(EmotionPlugin):
         emotionSet = EmotionSet()
         emotionSet.id = "Emotions"
         
+        if self._ESTIMATION == 'Probabilities':
+            emotionSet.onyx__maxIntensityValue = float(100.0)
+        
         emotion1 = Emotion() 
         for dimension in ['V','A','D']:
             weights = [feature_text[i] for i in feature_text if (i != 'surprise')]
@@ -277,12 +277,14 @@ class hashTagProba(EmotionPlugin):
         
         for i in feature_text:
             if self._ESTIMATION == 'Probabilities':
-                emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
-                                    onyx__hasEmotionIntensity=float(feature_text[i])))
+                emotionSet.onyx__hasEmotion.append(Emotion(
+                        onyx__hasEmotionCategory=self._wnaffect_mappings[i],
+                        onyx__hasEmotionIntensity=float(feature_text[i])*100 ))
             elif self._ESTIMATION == 'Classes':
-#                 if(feature_text[i] > 0):
-                    emotionSet.onyx__hasEmotion.append(Emotion(onyx__hasEmotionCategory=self._wnaffect_mappings[i],
-                                                              onyx__hasEmotionIntensity=int(feature_text[i])))
+                if(feature_text[i] > 0):
+                    emotionSet.onyx__hasEmotion.append(Emotion(
+                        onyx__hasEmotionCategory=self._wnaffect_mappings[i]))
+#                         onyx__hasEmotionIntensity=int(feature_text[i])))
         
         entry.emotions = [emotionSet,]
         
