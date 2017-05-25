@@ -42,6 +42,8 @@ class hashTagClassification(EmotionPlugin):
         self._paths_word_freq = os.path.join(os.path.dirname(__file__), 'wordFrequencies.dump')
         self._paths_ngramizer = os.path.join(os.path.dirname(__file__), 'ngramizers/ngramizer.dump')
         
+        self.emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy'] 
+        
         
     def activate(self, *args, **kwargs):
 
@@ -62,7 +64,7 @@ class hashTagClassification(EmotionPlugin):
         logger.info("{} {}".format(datetime.now() - st, "loaded _classifiers"))
         
         st = datetime.now()
-        self._Dictionary = self._load_word_vectors(filename = self._paths_word_emb, zipped = True, wordFrequencies = None)
+        self._Dictionary = self._load_word_vectors(filename = self._paths_word_emb, zipped = True, wordFrequencies = self._paths_word_freq)
         logger.info("{} {}".format(datetime.now() - st, "loaded _Dictionary"))
 
         logger.info(self.name+" plugin is ready to go!")
