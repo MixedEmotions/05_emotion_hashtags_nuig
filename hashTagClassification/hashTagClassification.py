@@ -62,7 +62,7 @@ class hashTagClassification(EmotionPlugin):
         logger.info("{} {}".format(datetime.now() - st, "loaded _classifiers"))
         
         st = datetime.now()
-        self._Dictionary = self._load_word_vectors(filename = self._paths_word_emb, zipped = True, wordFrequencies = self._wordFrequencies)
+        self._Dictionary = self._load_word_vectors(filename = self._paths_word_emb, zipped = True, wordFrequencies = None)
         logger.info("{} {}".format(datetime.now() - st, "loaded _Dictionary"))
 
         logger.info(self.name+" plugin is ready to go!")
