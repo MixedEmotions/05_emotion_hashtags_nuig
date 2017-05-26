@@ -42,7 +42,7 @@ class hashTagClassification(EmotionPlugin):
         self._paths_word_freq = os.path.join(os.path.dirname(__file__), 'wordFrequencies.dump')
         self._paths_ngramizer = os.path.join(os.path.dirname(__file__), 'ngramizers/ngramizer.dump')
         
-        self.emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy'] 
+        self._emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy'] 
         
         
     def activate(self, *args, **kwargs):
@@ -59,12 +59,12 @@ class hashTagClassification(EmotionPlugin):
         self._ngramizer = joblib.load(self._paths_ngramizer)    
         logger.info("{} {}".format(datetime.now() - st, "loaded _ngramizer"))
         
-        st = datetime.now()
-        self._classifiers = {estimator: self._load_classifier(PATH=self._paths_classifiers, ESTIMATOR=estimator, emoNames=self.emoNames) for estimator in self.estimators_list}  
-        logger.info("{} {}".format(datetime.now() - st, "loaded _classifiers"))
+        #st = datetime.now()
+        self._classifiers = {estimator: self._load_classifier(PATH=self._paths_classifiers, ESTIMATOR=estimator) for estimator in self.estimators_list}  
+        #logger.info("{} {}".format(datetime.now() - st, "loaded _classifiers"))
         
         st = datetime.now()
-        self._Dictionary = self._load_word_vectors(filename = self._paths_word_emb, zipped = True, wordFrequencies = self._paths_word_freq)
+        self._Dictionary = self._load_word_vectors(filename = self._paths_word_emb, zipped = True, wordFrequencies = None)
         logger.info("{} {}".format(datetime.now() - st, "loaded _Dictionary"))
 
         logger.info(self.name+" plugin is ready to go!")
@@ -188,16 +188,16 @@ class hashTagClassification(EmotionPlugin):
         return np.asarray([firstCap/length,allCap/length])      
 
     
-    def _load_classifier(self, PATH, ESTIMATOR, emoNames):
+    def _load_classifier(self, PATH, ESTIMATOR):
         
         models = []
         st = datetime.now()
 
-        for EMOTION in emoNames:
+        for EMOTION in self._emoNames:
             filename = os.path.join(PATH, ESTIMATOR, EMOTION + self.extension_classifier)
             st = datetime.now()
             m = joblib.load(filename)
-            logger.info("{} loaded {}.{}".format(datetime.now() - st, ESTIMATOR, EMOTION))
+            logger.info("{} loaded _{}.{}".format(datetime.now() - st, ESTIMATOR, EMOTION))
             models.append( m )
             
         return models
@@ -209,11 +209,10 @@ class hashTagClassification(EmotionPlugin):
 
     def _extract_features(self, X, classifiers, estimator):
         if(estimator == 'SVC'):        
-            feature_set = {emo: float((clf.predict_proba(X)[0][1])*100) for emo,clf in zip(self.emoNames, classifiers[estimator])}
+            feature_set = {emo: int((clf.predict_proba(X)[0][1])*100) for emo,clf in zip(self._emoNames, classifiers[estimator])}
         else:
-            feature_set = {emo: int(clf.predict(X)*100) for emo,clf in zip(self.emoNames, classifiers[estimator])} 
-            
-        return feature_set        
+            feature_set = {emo: int(clf.predict(X)*100) for emo,clf in zip(self._emoNames, classifiers[estimator])} 
+        return feature_set         
     
     
     def analyse(self, **params):
@@ -255,16 +254,16 @@ class hashTagClassification(EmotionPlugin):
         
 
         emotionSet.onyx__hasEmotion.append(emotion1)    
-        
+                    
         for i in feature_text:
-            if self.ESTIMATOR == 'SVC':
+            if(self.ESTIMATOR == 'SVC'):
                 emotionSet.onyx__hasEmotion.append(Emotion(
-                                    onyx__hasEmotionCategory = self.wnaffect_mappings[i],
-                                    onyx__hasEmotionIntensity = feature_text[i] ))
+                                    onyx__hasEmotionCategory=self.wnaffect_mappings[i],
+                                    onyx__hasEmotionIntensity=feature_text[i]))
             else:
-                if feature_text[i] > 0:
+                if(feature_text[i] > 0):
                     emotionSet.onyx__hasEmotion.append(Emotion(
-                            onyx__hasEmotionCategory = self.wnaffect_mappings[i]))
+                            onyx__hasEmotionCategory=self.wnaffect_mappings[i]))
         
         entry.emotions = [emotionSet,]        
         response.entries.append(entry)

@@ -58,8 +58,8 @@ class hashTagProba(EmotionPlugin):
         self._path_wordembeddings = os.path.dirname(local_path) + '/glove.twitter.27B.100d.txt.gz'
         
         self.emoNames = ['sadness', 'disgust', 'surprise', 'anger', 'fear', 'joy'] 
-#         self.emoNames = ['sadness', 'disgust', 'sadness', 'joy', 'fear', 'anger']
-#         self.emoNames = ['anger','fear','joy','sadness'] 
+        
+        
     def _load_unique_tokens(self, filename = 'wordFrequencies.dump'):    
         return joblib.load(filename)    
         
@@ -111,7 +111,6 @@ class hashTagProba(EmotionPlugin):
     def _lists_to_vectors(self, text):
         train_sequences = [self._text_to_sequence(text)]  
         X = sequence.pad_sequences(train_sequences, maxlen=self._maxlen)
-
         return X
     
     def _text_to_sequence(self,text):
@@ -171,14 +170,13 @@ class hashTagProba(EmotionPlugin):
             
 
     def _extract_features(self, X):
+        
         if self._ESTIMATION == 'Probabilities':            
             y_predict = np.array(self._hashTagDLModel.predict(X))[0]            
         else:
             blank = [0] * len(self.emoNames)
             for i,pred in enumerate(self._hashTagDLModel.predict_classes(X)):
-                print(i,pred)
                 blank[pred] = 1
-            print(blank)
             y_predict = np.array(blank)
             
         feature_set = {emo: y_ for emo, y_ in zip(self.emoNames, y_predict)}
@@ -235,7 +233,7 @@ class hashTagProba(EmotionPlugin):
                 if feature_text[i] > 0:
                     emotionSet.onyx__hasEmotion.append(Emotion(
                         onyx__hasEmotionCategory = self.wnaffect_mappings[i]))                    
-#                         onyx__hasEmotionIntensity=int(feature_text[i])))
+                        #onyx__hasEmotionIntensity=int(feature_text[i])))
         
         entry.emotions = [emotionSet,]        
         response.entries.append(entry)
